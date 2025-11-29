@@ -1,0 +1,93 @@
+--// ULTRA AI Auto-Driver v2 – Drives Around Cars Perfectly
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local cam = workspace.CurrentCamera
+
+local player = Players.LocalPlayer
+local enabled = false
+local driveSpeed = 0.03
+
+--// GUI (minimal & clean)
+local sg = Instance.new("ScreenGui", game.CoreGui)
+local frame = Instance.new("Frame", sg)
+frame.Size = UDim2.new(0, 260, 0, 120)
+frame.Position = UDim2.new(0, 15, 0, 15)
+frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
+frame.BorderColor3 = Color3.fromRGB(0,255,0)
+frame.Active = true
+frame.Draggable = true
+
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0,8)
+
+local title = Instance.new("TextLabel", frame)
+title.Text = "ULTIMATE AI DRIVER v2"
+title.Size = UDim2.new(1,0,0,30)
+title.BackgroundTransparency = 1
+title.TextColor3 = Color3.fromRGB(0,255,0)
+title.Font = Enum.Font.Code
+
+local toggle = Instance.new("TextButton", frame)
+toggle.Size = UDim2.new(0,100,0,40)
+toggle.Position = UDim2.new(0.5,-50,0,40)
+toggle.Text = "OFF"
+toggle.BackgroundColor3 = Color3.fromRGB(180,0,0)
+toggle.TextColor3 = Color3.new(1,1,1)
+
+local status = Instance.new("TextLabel", frame)
+status.Position = UDim2.new(0,0,1,-25)
+status.Size = UDim2.new(1,0,0,25)
+status.BackgroundTransparency = 1
+status.Text = "Status: Inactive"
+status.TextColor3 = Color3.fromRGB(255,255,255)
+
+toggle.MouseButton1Click:Connect(function()
+    enabled = not enabled
+    toggle.Text = enabled and "ON" or "OFF"
+    toggle.BackgroundColor3 = enabled and Color3.fromRGB(0,180,0) or Color3.fromRGB(180,0,0)
+    status.Text = enabled and "Status: DOMINATING" or "Status: Inactive"
+end)
+
+--// Smart AI Driving Core
+RunService.Heartbeat:Connect(function()
+    if not enabled or not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then return end
+    local root = player.Character.HumanoidRootPart
+
+    -- Release all keys first
+    for _, key in {Enum.KeyCode.W, Enum.KeyCode.A, Enum.KeyCode.S, Enum.KeyCode.D} do
+        VirtualInputManager:SendKeyEvent(false, key, false, game)
+    end
+
+    local function checkDirection(offsetX, offsetY)
+        local screenPoint = cam:WorldToViewportPoint(root.Position + root.CFrame.LookVector * 50 + root.CFrame.RightVector * offsetX)
+        local ray = cam:ScreenPointToRay(screenPoint.X + offsetX * 50, screenPoint.Y + offsetY * 50)
+        local params = RaycastParams.new()
+        params.FilterDescendantsInstances = {player.Character}
+        params.FilterType = Enum.RaycastFilterType.Blacklist
+        local result = workspace:Raycast(root.Position, ray.Direction * 80, params)
+        return result and (result.Instance.CanCollide or result.Instance.Parent:FindFirstChildOfClass("Humanoid"))
+    end
+
+    local forwardClear = not checkDirection(0, 0)
+    local leftClear = not checkDirection(-15, 0)
+    local rightClear = not checkDirection(15, 0)
+
+    if forwardClear then
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.W, false, game)
+    else
+        if leftClear and rightClear then
+            VirtualInputManager:SendKeyEvent(true, math.random() < 0.5 and Enum.KeyCode.A or Enum.KeyCode.D, false, game)
+        elseif leftClear then
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.A, false, game)
+        elseif rightClear then
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.D, false, game)
+        else
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.S, false, game) -- reverse if fully blocked
+            wait(0.3)
+        end
+    end
+
+    wait(driveSpeed)
+end)
+
+print("ULTIMATE AI DRIVER v2 loaded – you are now unstoppable")

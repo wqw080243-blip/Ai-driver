@@ -1,93 +1,170 @@
---// ULTRA AI Auto-Driver v2 – Drives Around Cars Perfectly
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
-local cam = workspace.CurrentCamera
+local Fluent=loadstring(game:HttpGet("https://github.com/ActualMasterOogway/Fluent-Renewed/releases/latest/download/Fluent.luau"))()
 
-local player = Players.LocalPlayer
-local enabled = false
-local driveSpeed = 0.03
+local firetouch=firetouchinterest or touchinterest or function(p,t,s)if p and t and s==0 then p.CFrame=t.CFrame end end
 
---// GUI (minimal & clean)
-local sg = Instance.new("ScreenGui", game.CoreGui)
-local frame = Instance.new("Frame", sg)
-frame.Size = UDim2.new(0, 260, 0, 120)
-frame.Position = UDim2.new(0, 15, 0, 15)
-frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
-frame.BorderColor3 = Color3.fromRGB(0,255,0)
-frame.Active = true
-frame.Draggable = true
+local Window=Fluent:CreateWindow{Title="a1q Hub 2025+",TabWidth=160,Size=UDim2.fromOffset(690,560),Acrylic=true,Theme="Vynixu"}
 
-Instance.new("UICorner", frame).CornerRadius = UDim.new(0,8)
+local MainTab=Window:AddTab{Title="Main",Icon="home"}
+local VisualsTab=Window:AddTab{Title="Visuals",Icon="eye"}
+local LocalPlayerTab=Window:AddTab{Title="Local Player",Icon="user"}
+local TeamsTab=Window:AddTab{Title="Teams",Icon="group"}
+local MiscTab=Window:AddTab{Title="Misc",Icon="settings"}
+local GKConfigsTab=Window:AddTab{Title="GK Configs",Icon="shield"}
+local BallModsTab=Window:AddTab{Title="Ball Mods",Icon="circle"}
+local AutoFeaturesTab=Window:AddTab{Title="Auto-Features",Icon="zap"}
 
-local title = Instance.new("TextLabel", frame)
-title.Text = "ULTIMATE AI DRIVER v2"
-title.Size = UDim2.new(1,0,0,30)
-title.BackgroundTransparency = 1
-title.TextColor3 = Color3.fromRGB(0,255,0)
-title.Font = Enum.Font.Code
+local Players=game:GetService("Players")
+local RunService=game:GetService("RunService")
+local CollectionService=game:GetService("CollectionService")
+local ReplicatedStorage=game:GetService("ReplicatedStorage")
+local UserInputService=game:GetService("UserInputService")
+local TeleportService=game:GetService("TeleportService")
+local Camera=workspace.CurrentCamera
+local player=Players.LocalPlayer
+local mouse=player:GetMouse()
 
-local toggle = Instance.new("TextButton", frame)
-toggle.Size = UDim2.new(0,100,0,40)
-toggle.Position = UDim2.new(0.5,-50,0,40)
-toggle.Text = "OFF"
-toggle.BackgroundColor3 = Color3.fromRGB(180,0,0)
-toggle.TextColor3 = Color3.new(1,1,1)
-
-local status = Instance.new("TextLabel", frame)
-status.Position = UDim2.new(0,0,1,-25)
-status.Size = UDim2.new(1,0,0,25)
-status.BackgroundTransparency = 1
-status.Text = "Status: Inactive"
-status.TextColor3 = Color3.fromRGB(255,255,255)
-
-toggle.MouseButton1Click:Connect(function()
-    enabled = not enabled
-    toggle.Text = enabled and "ON" or "OFF"
-    toggle.BackgroundColor3 = enabled and Color3.fromRGB(0,180,0) or Color3.fromRGB(180,0,0)
-    status.Text = enabled and "Status: DOMINATING" or "Status: Inactive"
+-- Bypass
+pcall(function()
+    for _,v in getgc(true)do
+        if type(v)=="table"and rawget(v,"gkCheck")then
+            local c=debug.getconstants(v.react)
+            for i,val in pairs(c)do
+                if val=="ignoreReactDecline"or val=="specialTool"then debug.setconstant(v.react,i,"ball")
+                elseif val=="overlapCheck"then rawset(v,"check",function()return true end)debug.setconstant(v.react,i,"check")end
+            end
+        end
+    end
+    for _,v in getgc(true)do
+        if type(v)=="function"and getfenv(v).script and getfenv(v).script.Name:find("Root")then
+            local c=debug.getconstants(v)
+            for i,val in pairs(c)do
+                if val=="NetworkOwner"or val=="getNetworkOwner"then debug.setconstant(v,i,function()return player end)end
+            end
+        end
+    end
 end)
 
---// Smart AI Driving Core
+local reachOn=false
+local reachX=7.5 local reachY=7.5 local reachZ=7.5
+local offsetX=0 local offsetY=0 local offsetZ=0
+local visOn=false local trans=0.5 local material="ForceField"
+local stamOn=false local predOn=false local advPred=false local thick=1.2 local maxBounces=3
+local pitchTP=false local antiGhost=false local antiVote=false
+local speed=16 local speedBoost=0 local gkOutBox=false
+
+local hitbox=Instance.new("Part",workspace)hitbox.Name="a1qHitbox"hitbox.Anchored=true hitbox.CanCollide=false hitbox.Transparency=0.6
+local box=Instance.new("SelectionBox",hitbox)box.LineThickness=0.02 box.Color3=Color3.fromRGB(255,80,80)
+
+local predLines={}
+local dot=Drawing.new("Circle")dot.Thickness=3 dot.Color=Color3.fromRGB(255,0,0)dot.Filled=true dot.Radius=12 dot.Visible=false
+local timeLabel=Drawing.new("Text")timeLabel.Size=24 timeLabel.Color=Color3.fromRGB(255,50,50)timeLabel.Center=true timeLabel.Outline=true timeLabel.Visible=false
+
+local function getBall()
+    for _,b in CollectionService:GetTagged("Ball")do if b:IsA("BasePart")then return b end end
+    for _,b in workspace:GetDescendants()do if b:IsA("BasePart")and(b.Name:lower():find("ball")or b.Name:lower():find("football"))then return b end end
+end
+
+MainTab:AddButton({Title="ACTIVATE REACH",Callback=function()reachOn=not reachOn Fluent:Notify({Title="a1q Reach",Content=reachOn and "REACH ON" or "REACH OFF",Duration=3})end})
+MainTab:AddSlider("ReachX",{Title="Reach X",Min=0,Max=50,Default=7.5,Rounding=1,Callback=function(v)reachX=v end})
+MainTab:AddSlider("ReachY",{Title="Reach Y",Min=0,Max=50,Default=7.5,Rounding=1,Callback=function(v)reachY=v end})
+MainTab:AddSlider("ReachZ",{Title="Reach Z",Min=0,Max=50,Default=7.5,Rounding=1,Callback=function(v)reachZ=v end})
+MainTab:AddSlider("OffsetX",{Title="Offset X",Min=-20,Max=20,Default=0,Rounding=1,Callback=function(v)offsetX=v end})
+MainTab:AddSlider("OffsetY",{Title="Offset Y",Min=-20,Max=20,Default=0,Rounding=1,Callback=function(v)offsetY=v end})
+MainTab:AddSlider("OffsetZ",{Title="Offset Z",Min=-20,Max=20,Default=0,Rounding=1,Callback=function(v)offsetZ=v end})
+
+VisualsTab:AddToggle("ShowReachVisualizer",{Title="Show Reach Visualizer",Default=false,Callback=function(v)visOn=v end})
+VisualsTab:AddSlider("VisualizerTransparency",{Title="Visualizer Transparency",Min=0,Max=1,Default=0.5,Rounding=2,Callback=function(v)trans=v end})
+VisualsTab:AddDropdown("HitboxMaterial",{Title="Hitbox Material",Values={"ForceField","Neon","SmoothPlastic"},Default="ForceField",Callback=function(v)material=v end})
+
+LocalPlayerTab:AddToggle("UnlimitedStamina",{Title="Unlimited Stamina",Default=false,Callback=function(v)stamOn=v end})
+
+BallModsTab:AddToggle("BallPredictor",{Title="Ball Predictor",Default=false,Callback=function(v)predOn=v end})
+BallModsTab:AddToggle("AdvancedPredictor",{Title="Advanced (Dot + Timer)",Default=false,Callback=function(v)advPred=v end})
+BallModsTab:AddSlider("LineThickness",{Title="Line Thickness",Min=0.2,Max=10,Default=1.2,Rounding=1,Callback=function(v)thick=v end})
+BallModsTab:AddSlider("MaxBounces",{Title="Max Bounces",Min=0,Max=10,Default=3,Rounding=0,Callback=function(v)maxBounces=v end})
+
+AutoFeaturesTab:AddToggle("AntiGhost",{Title="Anti Ghosting",Default=false,Callback=function(v)antiGhost=v end})
+AutoFeaturesTab:AddToggle("PitchTP",{Title="Pitch Teleport",Default=false,Callback=function(v)pitchTP=v end})
+AutoFeaturesTab:AddToggle("AntiVotekick",{Title="Anti Votekick (Auto Rejoin)",Default=false,Callback=function(v)antiVote=v end})
+
+-- NEW ANTI-VOTEKICK LOGIC (auto rejoin when kicked)
+spawn(function()
+    while task.wait(0.5) do
+        if antiVote and player.PlayerGui:FindFirstChild("main") then
+            local vk = player.PlayerGui.main:FindFirstChild("voteKick")
+            if vk and vk.Visible and vk:FindFirstChild("main") and vk.main:FindFirstChild("user") then
+                if vk.main.user.Text == player.Name then
+                    if #Players:GetPlayers() <= 1 then
+                        player:Kick()
+                        task.wait()
+                        TeleportService:Teleport(game.PlaceId, player)
+                    else
+                        TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, player)
+                    end
+                end
+            end
+        end
+    end
+end)
+
+UserInputService.InputBegan:Connect(function(inp,gp)
+    if gp or not pitchTP or inp.UserInputType~=Enum.UserInputType.MouseButton1 then return end
+    local ray=Camera:ScreenPointToRay(mouse.X,mouse.Y)
+    local params=RaycastParams.new()params.FilterDescendantsInstances={player.Character}
+    local result=workspace:Raycast(ray.Origin,ray.Direction*1000,params)
+    if result then player.Character.HumanoidRootPart.CFrame=CFrame.new(result.Position+Vector3.new(0,4,0))end
+end)
+
 RunService.Heartbeat:Connect(function()
-    if not enabled or not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then return end
-    local root = player.Character.HumanoidRootPart
+    if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart")then return end
+    local hrp=player.Character.HumanoidRootPart
+    local ball=getBall()if not ball then return end
 
-    -- Release all keys first
-    for _, key in {Enum.KeyCode.W, Enum.KeyCode.A, Enum.KeyCode.S, Enum.KeyCode.D} do
-        VirtualInputManager:SendKeyEvent(false, key, false, game)
-    end
+    hitbox.CFrame=hrp.CFrame*CFrame.new(offsetX,offsetY,offsetZ)
+    hitbox.Size=Vector3.new(reachX,reachY,reachZ)
+    box.Transparency=visOn and trans or 1
+    hitbox.Material=Enum.Material[material:gsub(" ","")]
 
-    local function checkDirection(offsetX, offsetY)
-        local screenPoint = cam:WorldToViewportPoint(root.Position + root.CFrame.LookVector * 50 + root.CFrame.RightVector * offsetX)
-        local ray = cam:ScreenPointToRay(screenPoint.X + offsetX * 50, screenPoint.Y + offsetY * 50)
-        local params = RaycastParams.new()
-        params.FilterDescendantsInstances = {player.Character}
-        params.FilterType = Enum.RaycastFilterType.Blacklist
-        local result = workspace:Raycast(root.Position, ray.Direction * 80, params)
-        return result and (result.Instance.CanCollide or result.Instance.Parent:FindFirstChildOfClass("Humanoid"))
-    end
-
-    local forwardClear = not checkDirection(0, 0)
-    local leftClear = not checkDirection(-15, 0)
-    local rightClear = not checkDirection(15, 0)
-
-    if forwardClear then
-        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.W, false, game)
-    else
-        if leftClear and rightClear then
-            VirtualInputManager:SendKeyEvent(true, math.random() < 0.5 and Enum.KeyCode.A or Enum.KeyCode.D, false, game)
-        elseif leftClear then
-            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.A, false, game)
-        elseif rightClear then
-            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.D, false, game)
-        else
-            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.S, false, game) -- reverse if fully blocked
-            wait(0.3)
+    if reachOn and (ball.Position-hitbox.Position).Magnitude<=(reachX+reachY+reachZ)/3 then
+        for _,n in {"LeftFoot","RightFoot","LeftLowerLeg","RightLowerLeg","Left Leg","Right Leg"}do
+            local l=player.Character:FindFirstChild(n)if l then firetouch(l,ball,0)firetouch(l,ball,1)end
         end
     end
 
-    wait(driveSpeed)
+    if antiGhost and (ball.Position-hitbox.Position).Magnitude<=(reachX+reachY+reachZ)/3 then
+        ball.Velocity=Vector3.zero ball.RotVelocity=Vector3.zero
+        ball.AssemblyLinearVelocity=Vector3.zero ball.AssemblyAngularVelocity=Vector3.zero
+        ball.CFrame=hrp.CFrame*CFrame.new(0,0,-3)
+        for _,p in player.Character:GetChildren()do if p:IsA("BasePart")then firetouch(p,ball,0)firetouch(p,ball,1)end end
+    end
+
+    if stamOn then pcall(function()player.PlayerScripts.controllers.movementController.stamina.Value=100 end)end
+
+    -- Ball Predictor
+    if predOn or advPred then
+        for _,l in predLines do if l then l:Destroy()end end predLines={}
+        local pos=ball.Position local vel=ball.AssemblyLinearVelocity local bounce=0
+        while bounce<maxBounces do
+            local params=RaycastParams.new()params.FilterDescendantsInstances={player.Character,ball}
+            local result=workspace:Raycast(pos,vel*0.5,params)
+            local endPos=result and result.Position or pos+vel*0.5
+            local line=Instance.new("Part",workspace)line.Anchored=true line.CanCollide=false line.Material="Neon" line.Color=Color3.fromRGB(0,255,255)
+            line.Size=Vector3.new(thick,thick,(pos-endPos).Magnitude) line.CFrame=CFrame.new((pos+endPos)/2,endPos)
+            table.insert(predLines,line)
+            if result then vel=vel-2*vel:Dot(result.Normal)*result.Normal*0.8 pos=result.Position bounce=bounce+1 else break end
+        end
+        if advPred then
+            local future=ball.Position+ball.AssemblyLinearVelocity*0.42
+            local sp,on=Camera:WorldToViewportPoint(future)
+            if on then dot.Position=Vector2.new(sp.X,sp.Y)dot.Visible=true
+                timeLabel.Text=string.format("%.2fs",(hrp.Position-future).Magnitude/math.max(ball.AssemblyLinearVelocity.Magnitude,1))
+                timeLabel.Position=Vector2.new(sp.X,sp.Y+30)timeLabel.Visible=true
+            else dot.Visible=false timeLabel.Visible=false end
+        else dot.Visible=false timeLabel.Visible=false end
+    else
+        for _,l in predLines do if l then l:Destroy()end end predLines={}
+        dot.Visible=false timeLabel.Visible=false
+    end
 end)
 
-print("ULTIMATE AI DRIVER v2 loaded – you are now unstoppable")
+Fluent:Notify({Title="a1q Hub 2025+",Content="Anti-Votekick (Auto Rejoin) Added • Everything Working",Duration=10})

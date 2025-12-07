@@ -23,7 +23,7 @@ local Camera=workspace.CurrentCamera
 local player=Players.LocalPlayer
 local mouse=player:GetMouse()
 
--- Bypass
+
 pcall(function()
     for _,v in getgc(true)do
         if type(v)=="table"and rawget(v,"gkCheck")then
@@ -87,7 +87,7 @@ AutoFeaturesTab:AddToggle("AntiGhost",{Title="Anti Ghosting",Default=false,Callb
 AutoFeaturesTab:AddToggle("PitchTP",{Title="Pitch Teleport",Default=false,Callback=function(v)pitchTP=v end})
 AutoFeaturesTab:AddToggle("AntiVotekick",{Title="Anti Votekick (Auto Rejoin)",Default=false,Callback=function(v)antiVote=v end})
 
--- NEW ANTI-VOTEKICK LOGIC (auto rejoin when kicked)
+
 spawn(function()
     while task.wait(0.5) do
         if antiVote and player.PlayerGui:FindFirstChild("main") then
@@ -140,7 +140,7 @@ RunService.Heartbeat:Connect(function()
 
     if stamOn then pcall(function()player.PlayerScripts.controllers.movementController.stamina.Value=100 end)end
 
-    -- Ball Predictor
+    
     if predOn or advPred then
         for _,l in predLines do if l then l:Destroy()end end predLines={}
         local pos=ball.Position local vel=ball.AssemblyLinearVelocity local bounce=0
